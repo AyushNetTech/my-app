@@ -19,9 +19,6 @@ export default function AuthScreen() {
   const [isSignUp, setIsSignUp] = useState(false)
   const navigation = useNavigation<any>()
 
-  // -----------------------------
-  // LOGIN
-  // -----------------------------
   async function signIn() {
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -29,9 +26,6 @@ export default function AuthScreen() {
     setLoading(false)
   }
 
-  // -----------------------------
-  // SIGN UP
-  // -----------------------------
   async function signUp() {
     setLoading(true)
     const { data, error } = await supabase.auth.signUp({ email, password })
@@ -48,40 +42,30 @@ export default function AuthScreen() {
       if (metaError) Alert.alert(metaError.message)
     }
 
-    Alert.alert(
-      'Success!',
-      'Account created. Check your email to verify your account.'
-    )
+    Alert.alert("Success", "Check your email to verify your account.")
     setLoading(false)
   }
 
-  // -----------------------------
-  // RESET PASSWORD
-  // -----------------------------
   async function resetPassword() {
-  if (!email) {
-    Alert.alert("Enter your email first");
-    return;
+    if (!email) {
+      Alert.alert("Enter your email first")
+      return
+    }
+
+    setLoading(true)
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "myapp://reset-password",
+    })
+
+    setLoading(false)
+
+    if (error) {
+      Alert.alert(error.message)
+    } else {
+      Alert.alert("Email Sent", "Check your inbox for reset link.")
+    }
   }
-
-  setLoading(true);
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: "myapp://reset-password",
-  });
-
-  setLoading(false);
-
-  if (error) {
-    Alert.alert(error.message);
-  } else {
-    Alert.alert(
-      "Password Reset Email Sent",
-      "Check your inbox and open the link using your device."
-    );
-  }
-}
-
 
   return (
     <View style={styles.container}>
