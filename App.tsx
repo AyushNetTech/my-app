@@ -33,13 +33,11 @@ const [session, setSession] = useState<Session | null>(null)
 
 useEffect(() => {
 supabase.auth.getSession().then(({ data: { session } }) => {
-Alert.alert('Initial session', session ? 'Logged in' : 'No session')
 setSession(session)
 })
 
 
 const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-  Alert.alert('Auth state changed', session ? 'Logged in' : 'Logged out')
   setSession(session)
 })
 
@@ -51,7 +49,6 @@ return () => listener.subscription.unsubscribe()
 useEffect(() => {
 const handleDeepLink = (event: { url: string }) => {
 const url = event.url
-Alert.alert('Deep link received', url)
 
   if (navigationRef.isReady()) {
     // Directly pass full URL to ResetPasswordScreen
@@ -66,7 +63,6 @@ const subscription = Linking.addEventListener('url', handleDeepLink)
 // Handle initial URL
 Linking.getInitialURL().then((url) => {
   if (url) {
-    Alert.alert('Initial URL', url)
     if (navigationRef.isReady()) {
       navigationRef.navigate('ResetPassword', { url })
     }
