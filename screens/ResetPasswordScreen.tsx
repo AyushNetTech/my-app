@@ -13,39 +13,33 @@ const [accessToken, setAccessToken] = useState<string | null>(null)
 const [refreshToken, setRefreshToken] = useState<string | null>(null)
 const [ready, setReady] = useState(false)
 
-// Helper to parse access_token and refresh_token from URL
-const parseTokensFromUrl = (url: string | null): { accessToken: string | null, refreshToken: string | null } => {
+const parseTokensFromUrl = (url: string | null) => {
 if (!url) return { accessToken: null, refreshToken: null }
 
 
-try {  
-  // Query param style ?access_token=...&refresh_token=...  
-  const queryParams = new URL(url).searchParams  
-  let access = queryParams.get('access_token')  
-  let refresh = queryParams.get('refresh_token')  
+try {
+  const params = new URL(url).searchParams
+  let access = params.get('access_token')
+  let refresh = params.get('refresh_token')
 
-  // Hash style #access_token=...&refresh_token=...  
-  if ((!access || !refresh) && url.includes('#')) {  
-    const hash = url.split('#')[1]  
-    const hashParams = new URLSearchParams(hash)  
-    access = access || hashParams.get('access_token')  
-    refresh = refresh || hashParams.get('refresh_token')  
-  }  
+  if ((!access || !refresh) && url.includes('#')) {
+    const hash = url.split('#')[1]
+    const hashParams = new URLSearchParams(hash)
+    access = access || hashParams.get('access_token')
+    refresh = refresh || hashParams.get('refresh_token')
+  }
 
-  return { accessToken: access, refreshToken: refresh }  
-} catch (err) {  
-  Alert.alert('parseTokensFromUrl error', String(err))  
-  return { accessToken: null, refreshToken: null }  
-} 
+  return { accessToken: access, refreshToken: refresh }
+} catch {
+  return { accessToken: null, refreshToken: null }
+}
 
 
 }
 
 useEffect(() => {
 const handleUrl = (url: string | null) => {
-Alert.alert('Handling URL', url ?? 'null')
 const { accessToken, refreshToken } = parseTokensFromUrl(url)
-Alert.alert('Parsed Tokens', `access: ${accessToken ?? 'null'}\nrefresh: ${refreshToken ?? 'null'}`)
 if (accessToken && refreshToken) {
 setAccessToken(accessToken)
 setRefreshToken(refreshToken)
@@ -54,25 +48,15 @@ setReady(true)
 }
 
 
-// 1️⃣ Check route param first  
-const paramUrl: string | undefined = route.params?.url  
-if (paramUrl) {  
-  Alert.alert('URL from route.params', paramUrl)  
-  handleUrl(paramUrl)  
-  return  
-}  
+const paramUrl = route.params?.url
+if (paramUrl) {
+  handleUrl(paramUrl)
+  return
+}
 
-// 2️⃣ Check initial URL  
-Linking.getInitialURL().then(url => {  
-  Alert.alert('Initial URL', url ?? 'null')  
-  handleUrl(url)  
-}).catch(err => {  
-  Alert.alert('getInitialURL error', String(err))  
-})  
-
-// 3️⃣ Listen for URL events while mounted  
-const sub = Linking.addEventListener('url', event => handleUrl(event.url))  
-return () => sub.remove()  
+Linking.getInitialURL().then(url => handleUrl(url))
+const sub = Linking.addEventListener('url', e => handleUrl(e.url))
+return () => sub.remove()
 
 
 }, [route.params])
@@ -82,39 +66,39 @@ if (!password) {
 Alert.alert('Error', 'Enter a new password')
 return
 }
+
+
 if (!accessToken || !refreshToken) {
-Alert.alert('Error', 'Missing access or refresh token')
-return
+  Alert.alert('Error', 'Missing access or refresh token')
+  return
 }
 
+setLoading(true)
 
-setLoading(true)  
-Alert.alert('Step 1', `Setting session with tokens:\naccess: ${accessToken}\nrefresh: ${refreshToken}`)  
+// Set session
+const { error: sessionError } = await supabase.auth.setSession({
+  access_token: accessToken,
+  refresh_token: refreshToken,
+})
+if (sessionError) {
+  setLoading(false)
+  Alert.alert('Error', sessionError.message)
+  return
+}
 
-// 1️⃣ Set session with both access and refresh tokens  
-const { error: sessionError } = await supabase.auth.setSession({  
-  access_token: accessToken,  
-  refresh_token: refreshToken,  
-})  
+const { error: updateError } = await supabase.auth.updateUser({ password })
+setLoading(false)
 
-if (sessionError) {  
-  Alert.alert('Set session error', sessionError.message)  
-  setLoading(false)  
-  return  
-}  
+if (updateError) {
+  Alert.alert('Error', updateError.message)
+  return
+}
 
-Alert.alert('Step 2', 'Session set successfully')  
-
-// 2️⃣ Update password  
-const { error: updateError } = await supabase.auth.updateUser({ password })  
-setLoading(false)  
-
-if (updateError) {  
-  Alert.alert('Update password error', updateError.message)  
-} else {  
-  Alert.alert('Success', 'Password updated! Please login with your new password.')  
-  navigation.navigate('Auth')  
-}  
+// 🔥 Directly go to Home (no alert)
+navigation.reset({
+  index: 0,
+  routes: [{ name: 'Home' }],
+})
 
 
 }
@@ -124,14 +108,18 @@ return ( <View style={styles.container}> <Text style={styles.waitingText}>Waitin
 )
 }
 
-return ( <View style={styles.container}> <TextInput  
-     style={styles.input}  
-     placeholder="New Password"  
-     secureTextEntry  
-     value={password}  
-     onChangeText={setPassword}  
+return ( <View style={styles.container}> <TextInput
+     style={styles.input}
+     placeholder="New Password"
+     secureTextEntry
+     value={password}
+     onChangeText={setPassword}
    />
-<Button title={loading ? 'Updating...' : 'Update Password'} onPress={updatePassword} disabled={loading} /> </View>
+<Button
+title={loading ? 'Updating...' : 'Update Password'}
+onPress={updatePassword}
+disabled={loading}
+/> </View>
 )
 }
 
